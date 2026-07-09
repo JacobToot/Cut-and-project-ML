@@ -1,0 +1,9 @@
+{
+    "model_cfg": {
+        "seq_len": 16384,
+        "kernel_size": 17,
+        "dropout_conv": 0.15,
+        "dropout_linear": 0.2,
+        "classes": 9,
+    }
+}
