@@ -1,0 +1,49 @@
+run_dir: /home2/s3306801/github/MSc_Research_Project/results/thesis/predict_rnn_2026-05-21_15-29-43
+timestamp: 2026-06-04T17:46:36.661294
+model_kind: gru
+eval_seed: 1044
+window_length: 512, window_min: 10
+n_eval_crystals: 512 (2-gap: 0, 3-gap: 512)
+rollout_steps: 150
+seed_lengths: [32, 64, 128, 256, 512]
+
+== Per-position accuracy (selected k) ==
+  k=  10: model=nan (Wilson nan-nan, boot nan-nan)  oracle=nan  n=0
+  k=  16: model=0.9121 (Wilson 0.9030-0.9204, boot 0.9045-0.9219)  oracle=0.9758  n=4096
+  k=  32: model=0.9604 (Wilson 0.9540-0.9660, boot 0.9531-0.9675)  oracle=0.9868  n=4096
+  k=  64: model=0.9749 (Wilson 0.9696-0.9792, boot 0.9704-0.9793)  oracle=0.9927  n=4096
+  k= 128: model=0.9863 (Wilson 0.9823-0.9895, boot 0.9822-0.9895)  oracle=0.9961  n=4096
+  k= 256: model=0.9941 (Wilson 0.9913-0.9961, boot 0.9919-0.9966)  oracle=0.9988  n=4096
+  k= 511: model=0.9978 (Wilson 0.9958-0.9988, boot 0.9961-0.9993)  oracle=0.9993  n=4096
+
+== Plausibility survival (3-gap) ==
+  seed_len= 32 k= 10: survival=0.8613
+  seed_len= 32 k= 25: survival=0.6895
+  seed_len= 32 k= 50: survival=0.4980
+  seed_len= 32 k=100: survival=0.2656
+  seed_len= 32 k=150: survival=0.1680
+
+  seed_len= 64 k= 10: survival=0.9219
+  seed_len= 64 k= 25: survival=0.7559
+  seed_len= 64 k= 50: survival=0.5918
+  seed_len= 64 k=100: survival=0.3574
+  seed_len= 64 k=150: survival=0.2402
+
+  seed_len=128 k= 10: survival=0.9473
+  seed_len=128 k= 25: survival=0.8535
+  seed_len=128 k= 50: survival=0.7148
+  seed_len=128 k=100: survival=0.5039
+  seed_len=128 k=150: survival=0.3926
+
+  seed_len=256 k= 10: survival=0.9629
+  seed_len=256 k= 25: survival=0.9238
+  seed_len=256 k= 50: survival=0.8398
+  seed_len=256 k=100: survival=0.6953
+  seed_len=256 k=150: survival=0.5957
+
+  seed_len=512 k= 10: survival=0.9727
+  seed_len=512 k= 25: survival=0.9570
+  seed_len=512 k= 50: survival=0.9043
+  seed_len=512 k=100: survival=0.8320
+  seed_len=512 k=150: survival=0.7617
+
