@@ -253,10 +253,8 @@ class NPEDiffraction2D(nn.Module):
                 min_height=1e-3, min_derivative=1e-3, min_width=1e-3,
                 num_blocks=num_conditioner_blocks,
             ))
-        self.flow = Flow(transforms=transforms, dim=theta_dim,
-                         base="standard_normal")
+        self.flow = Flow(transforms=transforms, dim=theta_dim)
 
-    # ----- context construction -----------------------------------------
 
     def _context(self, points, mask, edge_hist=None, log_mean_nn=None):
         img = self.diff_image_module(points, mask)
@@ -298,7 +296,7 @@ class NPEDiffraction2D(nn.Module):
         ctx = self._context(points, mask, edge_hist=edge_hist,
                             log_mean_nn=log_mean_nn)
         ctx = ctx.expand(n_samples, -1)
-        z = self.flow.distribution.sample((n_samples,)).to(ctx.device)
+        z = self.flow.base.sample((n_samples,)).to(ctx.device)
         theta, _ = self.flow.forward(z, ctx)
         return theta
 

@@ -14,20 +14,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import torch.nn as nn
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Dataset
 
-
-# ---------------------------------------------------------------------
-# Path setup
-# ---------------------------------------------------------------------
 
 def find_root(root_name: str = "cut-and-project-ML") -> Path:
     cwd = Path.cwd()
     for parent in (cwd, *cwd.parents):
         if parent.name == root_name:
             return parent
-    # Fallback: search up from this script's own location, useful when
-    # invoked from arbitrary cwd via an absolute path.
     for parent in Path(__file__).resolve().parents:
         if parent.name == root_name:
             return parent
@@ -40,11 +34,8 @@ if str(_source) not in sys.path:
     sys.path.insert(0, str(_source))
 
 from models.npe_1d import NPEModel
-
-import numpy as np
-import torch
-from torch.utils.data import Dataset
 from simulations.quasi_crystal import quasi_crystal
+
 
 class NPEDataset(Dataset):
     def __init__(
@@ -68,7 +59,7 @@ class NPEDataset(Dataset):
             gr = rng.uniform(gaussian_range[0], gaussian_range[1])
             pr = rng.uniform(poisson_range[0], poisson_range[1])
             do = rng.uniform(dropout_range[0], dropout_range[1])
-            
+
             attempt += 1
             try:
                 result = quasi_crystal(
@@ -84,7 +75,7 @@ class NPEDataset(Dataset):
                     dropout=do,
                     seed=seed + attempt,
                 )
-                
+
                 s = result[0]
                 sl = result[3]
                 aw = result[4]
@@ -98,26 +89,26 @@ class NPEDataset(Dataset):
             if attempt > n_samples * 20:
                 raise RuntimeError("Too many retries generating dataset.")
 
-        spacings = torch.from_numpy(np.stack(spacings_list)) # (N, seq_len)
-        theta = torch.tensor(theta_list, dtype=torch.float32) # (N, 2)
+        spacings = torch.from_numpy(np.stack(spacings_list))  # (N, seq_len)
+        theta = torch.tensor(theta_list, dtype=torch.float32)  # (N, 2)
 
-        mean_gap = spacings.mean(dim=-1).clamp(min=1e-8) # (N,)
-        self.log_mean_gap = mean_gap.log().float() # (N,)
+        mean_gap = spacings.mean(dim=-1).clamp(min=1e-8)  # (N,)
+        self.log_mean_gap = mean_gap.log().float()  # (N,)
 
         if normalize_spacings:
             spacings = spacings / mean_gap.unsqueeze(-1)
-        self.spacings = spacings # (N, seq_len)
+        self.spacings = spacings  # (N, seq_len)
 
         if stats is None:
-            theta_mean = theta.mean(dim=0) # (2,)
-            theta_std = theta.std(dim=0).clamp(min=1e-8) # (2,)
+            theta_mean = theta.mean(dim=0)  # (2,)
+            theta_std = theta.std(dim=0).clamp(min=1e-8)  # (2,)
         else:
-            theta_mean = stats["theta_mean"].float() # (2,)
-            theta_std = stats["theta_std"].float().clamp(min=1e-8) # (2,)
+            theta_mean = stats["theta_mean"].float()  # (2,)
+            theta_std = stats["theta_std"].float().clamp(min=1e-8)  # (2,)
 
-        self.theta = (theta - theta_mean) / theta_std # (N, 2)
-        self.theta_mean = theta_mean # (2,)
-        self.theta_std = theta_std # (2,)
+        self.theta = (theta - theta_mean) / theta_std  # (N, 2)
+        self.theta_mean = theta_mean  # (2,)
+        self.theta_std = theta_std  # (2,)
         self.normalize_spacings = normalize_spacings
 
     def __len__(self) -> int:
@@ -210,16 +201,27 @@ def train_npe(
     return tr_hist, va_hist, best_val_loss
 
 
-
-
 def main():
     parser = argparse.ArgumentParser()
+    # dataset args
     parser.add_argument("--slope_lower", type=float, default=1.0)
     parser.add_argument("--slope_upper", type=float, default=5.0)
     parser.add_argument("--aw_lower", type=float, default=0.5)
     parser.add_argument("--aw_upper", type=float, default=5.0)
+    parser.add_argument("--gauss_lower", type=float, default=0.0)
+    parser.add_argument("--gauss_upper", type=float, default=0.3)
+    parser.add_argument("--poisson_lower", type=float, default=0.0)
+    parser.add_argument("--poisson_upper", type=float, default=0.2)
+    parser.add_argument("--dropout_lower", type=float, default=0.0)
+    parser.add_argument("--dropout_upper", type=float, default=0.2)
+    parser.add_argument("--seq_len", type=int, default=2048)
+    parser.add_argument("--number_samples", type=int, default=8192,
+                        help="Number of training samples to generate.")
+    parser.add_argument("--val_samples", type=int, default=None,
+                        help="Number of validation samples to generate. "
+                             "Defaults to number_samples // 4.")
 
-    parser.add_argument("--seq_len", type=int, default=8192)
+    # flow args
     parser.add_argument("--context_dim", type=int, default=256)
     parser.add_argument("--theta_dim", type=int, default=2)
     parser.add_argument("--K", type=int, default=10)
@@ -236,7 +238,8 @@ def main():
                         help="Kept for config compatibility; "
                              "NPEModel currently only supports 'cnn'.")
 
-    parser.add_argument("--epochs", type=int, default=200)
+    # training loop args
+    parser.add_argument("--epochs", type=int, default=2)
     parser.add_argument("--start_schedule", type=int, default=20,
                         help="Constant LR for this many epochs, then cosine.")
     parser.add_argument("--lr", type=float, default=5e-4)
@@ -246,6 +249,7 @@ def main():
     parser.add_argument("--num_workers", type=int, default=4)
     parser.add_argument("--patience", type=int, default=30)
 
+    # general args
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--result_folder", type=str, default="npe_1d")
     parser.add_argument("--weights_name", type=str, default=None,
@@ -253,6 +257,9 @@ def main():
                              "parameters.txt to <root>/weights/<weights_name>/.")
 
     args = parser.parse_args()
+
+    if args.val_samples is None:
+        args.val_samples = max(256, args.number_samples // 4)
 
     # ---- setup -----------------------------------------------------
     torch.manual_seed(args.seed)
@@ -270,28 +277,50 @@ def main():
     result_dir = _root / "results" / args.result_folder / run_name
     result_dir.mkdir(parents=True, exist_ok=True)
 
-    data_dir = Path(args.data_dir)
-    if not data_dir.is_absolute():
-        data_dir = _root / data_dir
-
     print(f"[INFO] device      : {device}")
     print(f"[INFO] result dir  : {result_dir}")
-    print(f"[INFO] data dir    : {data_dir}")
 
     # ---- data ------------------------------------------------------
     slope_range = (args.slope_lower, args.slope_upper)
     aw_range = (args.aw_lower, args.aw_upper)
+    gauss_range = (args.gauss_lower, args.gauss_upper)
+    poisson_range = (args.poisson_lower, args.poisson_upper)
+    dropout_range = (args.dropout_lower, args.dropout_upper)
 
-    train_ds = NPEDataset(data_dir, split="train",
-                          slope_range=slope_range, aw_range=aw_range)
+    train_ds = NPEDataset(
+        n_samples=args.number_samples,
+        seq_len=args.seq_len,
+        slope_range=slope_range,
+        aw_range=aw_range,
+        gaussian_range=gauss_range,
+        poisson_range=poisson_range,
+        dropout_range=dropout_range,
+        seed=args.seed,
+        normalize_spacings=True,
+        stats=None,
+    )
     torch.save(
         {"theta_mean": train_ds.theta_mean, "theta_std": train_ds.theta_std},
         result_dir / "stats.pt",
     )
     print(f"[OK] stats -> {result_dir / 'stats.pt'}")
 
-    val_ds = NPEDataset(data_dir, split="val",
-                        slope_range=slope_range, aw_range=aw_range)
+    # NPEDataset is a synthetic generator (no on-disk data/split to load),
+    # so val is a second, independently-sampled draw. It reuses train's
+    # theta_mean/theta_std so both sets live in the same normalized theta
+    # space -- otherwise val loss would not be comparable to train loss.
+    val_ds = NPEDataset(
+        n_samples=args.val_samples,
+        seq_len=args.seq_len,
+        slope_range=slope_range,
+        aw_range=aw_range,
+        gaussian_range=gauss_range,
+        poisson_range=poisson_range,
+        dropout_range=dropout_range,
+        seed=args.seed + 1_000_000,  # disjoint stream from train
+        normalize_spacings=True,
+        stats={"theta_mean": train_ds.theta_mean, "theta_std": train_ds.theta_std},
+    )
 
     train_loader = DataLoader(
         train_ds, batch_size=args.batch_size, shuffle=True,
@@ -360,9 +389,11 @@ def main():
         timestamp=timestamp,
         device=device,
         seed=args.seed,
-        data_dir=str(data_dir),
         slope_range=list(slope_range),
         aw_range=list(aw_range),
+        gaussian_range=list(gauss_range),
+        poisson_range=list(poisson_range),
+        dropout_range=list(dropout_range),
         train_num_samples=len(train_ds),
         val_num_samples=len(val_ds),
         best_val_loss=float(best_val),
@@ -390,7 +421,7 @@ def main():
         w_dir.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(result_dir / "best_weights.pt", w_dir / "weights.pt")
         shutil.copyfile(result_dir / "parameters.txt", w_dir / "parameters.txt")
-        shutil.copyfile(result_dir / "stats.pt",       w_dir / "stats.pt")   
+        shutil.copyfile(result_dir / "stats.pt", w_dir / "stats.pt")
         print(f"[OK] weights/ copy -> {w_dir}")
 
 

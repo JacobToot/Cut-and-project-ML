@@ -1,12 +1,24 @@
 import numpy as np
-from simulations.quasi_crystal import _find_tiles_robust
+from simulations.quasi_crystal import _find_tiles
 
-def wordify(spacings, centers=None, alphabet=("A","B","C")):
+def _cluster_spacings(x, tol=1e-6):
+    """
+    Cluster 1D spacing values into tile-length groups by merging
+    consecutive sorted values that differ by less than `tol`.
+    """
+    x_sorted = np.sort(x)
+    gaps = np.diff(x_sorted)
+    split_idx = np.flatnonzero(gaps >= tol) + 1
+    groups = np.split(x_sorted, split_idx)
+    return np.array([g.mean() for g in groups], dtype=np.float64)
+
+def wordify(spacings, centers=None, alphabet=("A", "B", "C"), tol=1e-6):
+
     x = np.asarray(spacings, float)
     x = x[np.isfinite(x)]
 
     if centers is None:
-        centers = _find_tiles_robust(x).astype(np.float64)
+        centers = _cluster_spacings(x, tol=tol)
     else:
         centers = np.asarray(centers, dtype=np.float64)
 
@@ -62,7 +74,7 @@ def complexity_report(word, n_max=30):
     }
 
 def complexity_pipeline(spacings, n_max=500, tol=1e-8):
-    word, centers = wordify(spacings, tol=tol)
+    word, centers = wordify(spacings)
 
     N = len(word)
     n = np.arange(1, n_max + 1)

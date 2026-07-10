@@ -24,29 +24,9 @@ def compute_internal_coordinates(ij_pairs, slope):
 
 
 def _find_tiles(delta_ij, slope):
-    
     """
-    Identify tile types from lattice gaps in Z2 from a sorted list (according to projected physical coordinates)
-    of indices appearing in the cut-and-project acceptance window
-
-    arguments:
-    delta_ij : np.ndarray of int, shape (N_gaps, 2)
-        Lattice step (Δi, Δj) for each consecutive gap, i.e.
-        ``np.diff(ij_array, axis=0)``.
-    slope : float
-        The irrational slope defining the projection.
-
-    returns:
-    physical_tiles : np.ndarray of float64, length 2 or 3
-        Distinct physical gap lengths, sorted ascending.
-    internal_tiles : np.ndarray of float64, same length
-        Internal (star-space) gap for each tile, same order as
-        physical_tiles.
-    symbols : np.ndarray of int64, length N_gaps
-        Tile index for each gap, indexing into physical_tiles /
-        internal_tiles.
+    Identify tile types from lattice gaps in Z2
     """
-
     unique_steps, inverse = np.unique(delta_ij, axis=0, return_inverse=True)
     n_tiles = len(unique_steps)
     assert n_tiles in (2, 3), (
@@ -63,7 +43,6 @@ def _find_tiles(delta_ij, slope):
         physical_tiles[k] = (di + dj * slope) / norm
         internal_tiles[k] = (dj - di * slope) / norm
 
-    # Sort everything by ascending physical gap length
     order = np.argsort(physical_tiles)
     physical_tiles = physical_tiles[order]
     internal_tiles = internal_tiles[order]

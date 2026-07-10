@@ -730,19 +730,15 @@ def main():
     # ---- model (Conv1DClassifier kwargs) ---------------------------
     parser.add_argument("--kernel_size", type=int, default=17)
     parser.add_argument("--stride", type=int, default=1)
-    parser.add_argument("--padding", type=int, default=4,
-                        help="Class default; NOT changed for v14 compat.")
     parser.add_argument("--dropout_conv", type=float, default=0.15)
     parser.add_argument("--dropout_linear", type=float, default=0.2)
-    parser.add_argument("--pooling_channels", type=int, default=16,
-                        help="Class default; NOT changed for v14 compat.")
     parser.add_argument("--unknown_weight", type=float, default=0.2,
                         help="Cross-entropy weight for the unused "
                              "'Unknown' output class.")
 
     # ---- optimiser -------------------------------------------------
     parser.add_argument("--batch_size", type=int, default=64)
-    parser.add_argument("--epochs", type=int, default=100)
+    parser.add_argument("--epochs", type=int, default=1)
     parser.add_argument("--lr", type=float, default=2e-4)
     parser.add_argument("--eta_min_ratio", type=float, default=0.05)
 
@@ -819,11 +815,8 @@ def main():
         seq_len=args.seq_len,
         classes=NUM_CLASSES,
         kernel_size=args.kernel_size,
-        stride=args.stride,
-        padding=args.padding,
         dropout_conv=args.dropout_conv,
         dropout_linear=args.dropout_linear,
-        pooling_channels=args.pooling_channels,
     )
     model = Conv1DClassifier(**model_cfg).to(device)
 

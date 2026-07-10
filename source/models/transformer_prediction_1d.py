@@ -8,7 +8,7 @@ from pathlib import Path
 import sys
 
 
-def find_root(root: str = "MSc_Research_Project") -> Path:
+def find_root(root: str = "cut-and-project-ML") -> Path:
     
     cwd = Path.cwd()
     for parent in (cwd, *cwd.parents):
@@ -18,15 +18,15 @@ def find_root(root: str = "MSc_Research_Project") -> Path:
     raise RuntimeError(f"Specified root '{root}' not found")
 
 
-root = find_root("MSc_Research_Project")
-src_dir = root / "src"
+root = find_root("cut-and-project-ML")
+source_dir = root / "source"
 
-if str(src_dir) not in sys.path:
-    sys.path.insert(0, str(src_dir))
+if str(source_dir) not in sys.path:
+    sys.path.insert(0, str(source_dir))
 
 from simulations.quasi_crystal import quasi_crystal
-from utils.complexity import wordify
-from utils.math_functions import truth_frequencies, lookup_table
+from utils.complexity_utils import wordify
+from utils.math_utils import truth_frequencies, lookup_table
 
 
 class Conditioner(nn.Module):
@@ -99,14 +99,14 @@ class Transformer(nn.Module):
             nn.Linear(d_model, num_classes),
         )
 
-    def forward(self, x_ids, p_vec, *, src_key_padding_mask=None):
+    def forward(self, x_ids, p_vec, *, source_key_padding_mask=None):
         """
         x_ids:
         - discrete: LongTensor (B, seq_len) with class indices
         - continuous: FloatTensor (B, seq_len) or (B, seq_len, cont_dim)
         p_vec: FloatTensor (B, cond_dim)
 
-        src_key_padding_mask:
+        source_key_padding_mask:
         - optional BoolTensor (B, seq_len) where True = PAD positions in x_ids
         - applies ONLY to the x part (not the prefix tokens)
         """
@@ -126,29 +126,29 @@ class Transformer(nn.Module):
 
         # Build full padding mask for (prefix + x)
         full_pad_mask = None
-        if src_key_padding_mask is not None:
-            if src_key_padding_mask.dtype != torch.bool:
-                src_key_padding_mask = src_key_padding_mask.bool()
-            if src_key_padding_mask.dim() != 2 or src_key_padding_mask.size(1) != self.seq_len:
+        if source_key_padding_mask is not None:
+            if source_key_padding_mask.dtype != torch.bool:
+                source_key_padding_mask = source_key_padding_mask.bool()
+            if source_key_padding_mask.dim() != 2 or source_key_padding_mask.size(1) != self.seq_len:
                 raise ValueError(
-                    f"src_key_padding_mask must be (B, {self.seq_len}) bool, got {tuple(src_key_padding_mask.shape)}"
+                    f"source_key_padding_mask must be (B, {self.seq_len}) bool, got {tuple(source_key_padding_mask.shape)}"
                 )
 
-            B = src_key_padding_mask.size(0)
+            B = source_key_padding_mask.size(0)
             # prefix tokens are never padding
-            pfx_pad = torch.zeros((B, self.prefix_tokens), dtype=torch.bool, device=src_key_padding_mask.device)
-            full_pad_mask = torch.cat([pfx_pad, src_key_padding_mask], dim=1)  # (B, P+L)
+            pfx_pad = torch.zeros((B, self.prefix_tokens), dtype=torch.bool, device=source_key_padding_mask.device)
+            full_pad_mask = torch.cat([pfx_pad, source_key_padding_mask], dim=1)  # (B, P+L)
 
         # Encoder attends ignoring PAD positions (True = PAD)
-        z = self.encoder(z, src_key_padding_mask=full_pad_mask)  # (B, P+L, D)
+        z = self.encoder(z, source_key_padding_mask=full_pad_mask)  # (B, P+L, D)
 
         # Pool from last *valid* token position.
-        if src_key_padding_mask is None:
+        if source_key_padding_mask is None:
             # original behavior: last position
             pooled = z[:, -1, :]
         else:
             # valid lengths in x (count of non-pad)
-            valid_len = (~src_key_padding_mask).sum(dim=1)  # (B,)
+            valid_len = (~source_key_padding_mask).sum(dim=1)  # (B,)
             # clamp so we never index before the x starts
             valid_len = torch.clamp(valid_len, min=1)
             # index into z: prefix_tokens + (valid_len - 1)
